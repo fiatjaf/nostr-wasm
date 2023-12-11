@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>nostr-wasm demo</title>
+    <style>
+      body {
+        background: #333;
+        color: white;
+        line-height: 20pt;
+        font-family: monospace;
+      }
+
+      input,
+      textarea {
+        background: #555;
+        color: #f7f7f7;
+        border: 1px solid black;
+        padding: 4px;
+        font-family: monospace;
+      }
+
+      input[readonly] {
+        background: #444;
+        color: #bbb;
+      }
+
+      a {
+        color: blanchedalmond;
+      }
+
+      hr {
+        border: 1px solid #666;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="./script.ts"></script>
+
+    <noscript>JavaScript is required</noscript>
+
+    <h1>nostr-wasm signatures demo</h1>
+
+    <table>
+      <tr>
+        <td>
+          <label for="sk">secret key:</label>
+        </td>
+        <td>
+          <input type="text" size="68" id="sk" name="sk" spellcheck="false" />
+        </td>
+      </tr>
+
+      <tr>
+        <td>
+          <label for="pk">public key:</label>
+        </td>
+        <td>
+          <input type="text" size="68" id="pk" name="pk" readonly />
+        </td>
+      </tr>
+
+      <tr>
+        <td>
+          <label for="msg">message:</label>
+        </td>
+        <td>
+          <textarea cols="40" rows="3" id="msg" name="msg" spellcheck="false">
+Hello world!</textarea
+          >
+        </td>
+      </tr>
+
+      <tr>
+        <td>
+          <label for="hash">hash:</label>
+        </td>
+        <td>
+          <input type="text" size="68" id="hash" name="hash" readonly />
+        </td>
+      </tr>
+
+      <tr>
+        <td>
+          <label for="sig">signature:</label>
+        </td>
+        <td>
+          <input type="text" size="68" id="sig" name="sig" readonly />
+        </td>
+      </tr>
+
+      <tr>
+        <td>
+          <label for="verified">verified:</label>
+        </td>
+        <td>
+          <input type="text" size="36" id="verified" name="verified" readonly />
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
