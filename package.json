@@ -15,9 +15,7 @@
   },
   "author": "fiatjaf <fiatjaf@gmail.com>",
   "license": "MIT",
-  "dependencies": {
-    "@blake.regalia/belt": "^0.21.0"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@blake.regalia/tsconfig": "^0.1.2",
     "@rollup/plugin-typescript": "^11.1.5",

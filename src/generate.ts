@@ -1,9 +1,27 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
 import {readFileSync} from 'fs'
 
-import {oderac, type Dict, __UNDEFINED} from '@blake.regalia/belt'
-
 import * as acorn from 'acorn'
+
+type Dict<V = string> = Record<string, V>
+
+/**
+ * Reduce object entries to an array via concatenation (with filtering)
+ */
+function reduceConcat<A, R>(
+  input: Dict<A>,
+  concat: (key: string, val: A, idx: number) => R
+) {
+  let entries = Object.entries(input)
+  return entries.reduce<R[]>((out, [si_key, w_value], i_entry) => {
+    // invoke callback and capture return value
+    const res: R = concat(si_key, w_value, i_entry)
+    if (res !== undefined) {
+      out.push(res)
+    }
+    return out
+  }, [])
+}
 
 const sr_file = process.argv[2]
 
@@ -198,25 +216,25 @@ import type {
 } from '../types.js';
 
 export interface WasmImportsExtension extends WasmImports {
-	${oderac(
+	${reduceConcat(
     h_types,
     (si_key, sx_value) => `${H_RENAME_IMPORTS[si_key] || si_key}: ${sx_value};`
   ).join('\n\t')}
 }
 
 export interface WasmExportsExtension extends WasmExports {
-	${oderac(h_exports, si_func =>
+	${reduceConcat(h_exports, si_func =>
     si_func in H_KNOWN_EXPORT_TYPES
-      ? __UNDEFINED
+      ? undefined
       : `${rename_export(si_func)}: Function;`
   ).join('\n\t')}
 }
 
 export const map_wasm_imports = (g_imports: WasmImportsExtension) => ({
 	${si_import_key}: {
-		${oderac(
+		${reduceConcat(
       h_imports,
-      (si_export, [si_symbol, sx_value]) => `${si_symbol}: ${sx_value},`
+      (_, [si_symbol, sx_value]) => `${si_symbol}: ${sx_value},`
     ).join('\n\t\t')}
 	},
 });
@@ -224,7 +242,7 @@ export const map_wasm_imports = (g_imports: WasmImportsExtension) => ({
 export const map_wasm_exports = <
 	g_extension extends WasmExportsExtension=WasmExportsExtension,
 >(g_exports: WebAssembly.Exports): g_extension => ({
-	${oderac(h_exports, (si_func, sx_value) => sx_value + ',').join('\n\t')}
+	${reduceConcat(h_exports, (_, sx_value) => sx_value + ',').join('\n\t')}
 
 	init: () => (g_exports['${si_init_key}'] as VoidFunction)(),
 } as g_extension);

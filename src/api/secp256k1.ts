@@ -6,10 +6,6 @@ import type {
   PointerXOnlyKey
 } from './secp256k1-types.js'
 
-import type {Promisable} from '@blake.regalia/belt'
-
-import {buffer} from '@blake.regalia/belt'
-
 import {emsimp} from './emsimp.js'
 import {BinaryResult, ByteLens, Flags} from './secp256k1-types.js'
 import {map_wasm_exports, map_wasm_imports} from '../gen/wasm.js'
@@ -19,7 +15,7 @@ const S_TAG_BIP340_VERIFY = 'BIP340 verify: '
 const S_REASON_INVALID_SK = 'Invalid private key'
 const S_REASON_INVALID_PK = 'Invalid public key'
 
-const random_32 = () => crypto.getRandomValues(buffer(32))
+const random_32 = () => crypto.getRandomValues(new Uint8Array(32))
 
 /**
  * Wrapper instance providing operations backed by libsecp256k1 WASM module
@@ -63,7 +59,7 @@ export interface Secp256k1 {
  * @returns the wrapper API
  */
 export const WasmSecp256k1 = async (
-  z_src: Promisable<Response> | BufferSource
+  z_src: Promise<Response> | Response | BufferSource
 ): Promise<Secp256k1> => {
   // prepare the runtime
   const [g_imports, f_bind_heap] = emsimp(map_wasm_imports, 'wasm-secp256k1')
@@ -111,6 +107,9 @@ export const WasmSecp256k1 = async (
     Flags.CONTEXT_SIGN | Flags.CONTEXT_VERIFY
   )
 
+  // an encoder for hashing strings
+  const utf8 = new TextEncoder()
+
   /**
    * Randomizes the context for better protection against CPU side-channel attacks
    */
@@ -155,7 +154,8 @@ export const WasmSecp256k1 = async (
   }
 
   return {
-    gen_secret_key: () => crypto.getRandomValues(buffer(ByteLens.PRIVATE_KEY)),
+    gen_secret_key: () =>
+      crypto.getRandomValues(new Uint8Array(ByteLens.PRIVATE_KEY)),
 
     get_public_key(atu8_sk) {
       // randomize context

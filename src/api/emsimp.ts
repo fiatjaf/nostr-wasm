@@ -1,7 +1,5 @@
 import type {ImportMapper} from 'src/types'
 
-import {buffer, buffer_to_text} from '@blake.regalia/belt'
-
 export const emsimp = (f_map_imports: ImportMapper, s_tag: string) => {
   s_tag += ': '
 
@@ -19,6 +17,9 @@ export const emsimp = (f_map_imports: ImportMapper, s_tag: string) => {
   ) => console[s_channel](s_tag + s_out.replace(/\0/g, '\n'))
 
   let s_error = ''
+
+  // for converting bytes to text
+  const utf8 = new TextDecoder()
 
   const h_fds: Record<number, (s_out: string) => void> = {
     // stdout
@@ -63,7 +64,7 @@ export const emsimp = (f_map_imports: ImportMapper, s_tag: string) => {
         ;(ip_iov as number) += 8
 
         // extract text from buffer
-        s_out += buffer_to_text(ATU8_HEAP.subarray(ip_start, ip_start + nb_len))
+        s_out += utf8.decode(ATU8_HEAP.subarray(ip_start, ip_start + nb_len))
 
         // update number of bytes read
         cb_read += nb_len
@@ -92,7 +93,7 @@ export const emsimp = (f_map_imports: ImportMapper, s_tag: string) => {
     (d_memory: WebAssembly.Memory) =>
       [
         (AB_HEAP = d_memory.buffer),
-        (ATU8_HEAP = buffer(AB_HEAP)),
+        (ATU8_HEAP = new Uint8Array(AB_HEAP)),
         (ATU32_HEAP = new Uint32Array(AB_HEAP))
       ] as const
   ] as const

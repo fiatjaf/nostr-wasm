@@ -2,7 +2,6 @@ import {readFileSync} from 'node:fs'
 import path from 'node:path'
 import {gzipSync} from 'node:zlib'
 
-import {buffer_to_base64} from '@blake.regalia/belt'
 import typescript from '@rollup/plugin-typescript'
 import {defineConfig} from 'rollup'
 
@@ -45,11 +44,15 @@ export default defineConfig({
 
         p_file = p_file.slice(SI_WASM.length)
 
-        // compress
         if (p_file.endsWith('?gzip')) {
+          // compressed
           p_file = p_file.replace(/\?gzip$/, '')
-
-          sb64_contents = buffer_to_base64(gzipSync(readFileSync(p_file)))
+          const gzipped = gzipSync(readFileSync(p_file))
+          sb64_contents = btoa(
+            Array.from(gzipped)
+              .map(xb => String.fromCharCode(xb))
+              .join('')
+          )
         } else {
           // raw
           // load wasm as base64-encoded string
