@@ -11,7 +11,6 @@ export type PointerSha256 = Pointer<'sha256'>
 
 /* eslint-disable @typescript-eslint/no-duplicate-enum-values, @typescript-eslint/prefer-literal-enum-member */
 export const enum ByteLens {
-  RANDOM_SEED = 32, // when randomizing context
   PRIVATE_KEY = 32,
 
   // typedef struct {
@@ -30,17 +29,12 @@ export const enum ByteLens {
   MSG_HASH = 32,
   NONCE_ENTROPY = 32,
 
-  /**
-   * From the source:
-   * ```
-   * typedef struct {
-   *   uint32_t s[8];
-   *   unsigned char buf[64];
-   *   uint64_t bytes;
-   * } secp256k1_sha256;
-   * ```
-   */
-  SHA256 = 4 * 8 + 64 + 8
+  // typedef struct {
+  //   uint32_t s[8];
+  //   unsigned char buf[64];
+  //   uint64_t bytes;
+  // } secp256k1_sha256;
+  SHA256_LIB = 4 * 8 + 64 + 8
 }
 
 // ##### From secp256k1.h: #####
@@ -59,10 +53,7 @@ export const enum Flags {
   CONTEXT_NONE = (1 << 0) | 0,
   CONTEXT_VERIFY = (1 << 0) | (1 << 8),
   CONTEXT_SIGN = (1 << 0) | (1 << 9),
-  CONTEXT_DECLASSIFY = (1 << 0) | (1 << 10),
-
-  COMPRESSION_UNCOMPRESSED = (1 << 1) | 0,
-  COMPRESSION_COMPRESSED = (1 << 1) | (1 << 8)
+  CONTEXT_DECLASSIFY = (1 << 0) | (1 << 10)
 }
 /* eslint-enable */
 
@@ -83,15 +74,6 @@ export interface Secp256k1WasmCore extends WasmExportsExtension {
    *  In:      flags: Always set to SECP256K1_CONTEXT_NONE (see below).
    */
   context_create(xm_flags: Flags): PointerContext
-
-  /** Randomizes the context to provide enhanced protection against side-channel leakage.
-   *
-   *  Returns: 1: randomization successful
-   *           0: error
-   *  Args:    ctx:       pointer to a context object (not secp256k1_context_static).
-   *  In:      seed32:    pointer to a 32-byte random seed (NULL resets to initial state).
-   */
-  context_randomize(ip_ctx: PointerContext, ip_seed: PointerSeed): BinaryResult
 
   /** Compute the keypair for a secret key.
    *
@@ -207,16 +189,8 @@ export interface Secp256k1WasmCore extends WasmExportsExtension {
     msglen: number,
     pubkey: PointerXOnlyKey
   ): BinaryResult
-}
 
-export interface Secp256k1WasmSha256 {
-  sha256_initialize(ip_hash: PointerSha256): void
-
-  sha256_write(
-    ip_hash: PointerSha256,
-    ip_data_in: Pointer<number>,
-    nb_data_in: number
-  ): void
-
-  sha256_finalize(ip_hash: PointerSha256, ip_digest_out: Pointer<32>): void
+  sha256_initialize(hash: PointerSha256): void
+  sha256_write(hash: PointerSha256, data: Pointer<number>, size: number): void
+  sha256_finalize(hash: PointerSha256, out32: Pointer<32>): void
 }

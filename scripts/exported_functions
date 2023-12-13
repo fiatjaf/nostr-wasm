@@ -1,0 +1,12 @@
+_malloc
+_free
+_secp256k1_context_create
+_secp256k1_keypair_create
+_secp256k1_keypair_xonly_pub
+_secp256k1_xonly_pubkey_parse
+_secp256k1_xonly_pubkey_serialize
+_secp256k1_schnorrsig_sign32
+_secp256k1_schnorrsig_verify
+_secp256k1_sha256_initialize
+_secp256k1_sha256_write
+_secp256k1_sha256_finalize

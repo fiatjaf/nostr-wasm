@@ -5,7 +5,7 @@ Nostr signature stuff in WASM based on libsecp256k1.
 ## Install
 
 ```sh
-npm install
+yarn install
 ```
 
 ## Usage

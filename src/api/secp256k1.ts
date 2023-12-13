@@ -1,9 +1,9 @@
 import type {
   PointerKeypair,
-  PointerSeed,
   PointerSig,
   Secp256k1WasmCore,
-  PointerXOnlyKey
+  PointerXOnlyKey,
+  PointerSha256
 } from './secp256k1-types.js'
 
 import {emsimp} from './emsimp.js'
@@ -14,8 +14,6 @@ const S_TAG_BIP340_VERIFY = 'BIP340 verify: '
 
 const S_REASON_INVALID_SK = 'Invalid private key'
 const S_REASON_INVALID_PK = 'Invalid public key'
-
-const random_32 = () => crypto.getRandomValues(new Uint8Array(32))
 
 /**
  * Wrapper instance providing operations backed by libsecp256k1 WASM module
@@ -50,6 +48,8 @@ export interface Secp256k1 {
    * @param pk - the public key
    */
   verify(signature: Uint8Array, hash: Uint8Array, pk: Uint8Array): boolean
+
+  sha256(message: string): Uint8Array
 }
 
 /**
@@ -89,7 +89,6 @@ export const WasmSecp256k1 = async (
 
   const ip_sk = g_wasm.malloc(ByteLens.PRIVATE_KEY)
   const ip_ent = g_wasm.malloc(ByteLens.NONCE_ENTROPY)
-  const ip_seed = g_wasm.malloc<PointerSeed>(ByteLens.RANDOM_SEED)
   const ip_msg_hash = g_wasm.malloc(ByteLens.MSG_HASH)
 
   // scratch spaces
@@ -102,6 +101,9 @@ export const WasmSecp256k1 = async (
   // library handle: secp256k1_xonly_pubkey;
   const ip_xonly_pubkey = g_wasm.malloc<PointerXOnlyKey>(ByteLens.XONLY_KEY_LIB)
 
+  // library handle: secp256k1_sha256;
+  const ip_sha256 = g_wasm.malloc<PointerSha256>(ByteLens.SHA256_LIB)
+
   // create a reusable context
   const ip_ctx = g_wasm.context_create(
     Flags.CONTEXT_SIGN | Flags.CONTEXT_VERIFY
@@ -109,19 +111,6 @@ export const WasmSecp256k1 = async (
 
   // an encoder for hashing strings
   const utf8 = new TextEncoder()
-
-  /**
-   * Randomizes the context for better protection against CPU side-channel attacks
-   */
-  const randomize_context = () => {
-    // put random seed bytes into place
-    ATU8_HEAP.set(random_32(), ip_seed)
-
-    // randomize context
-    if (BinaryResult.SUCCESS !== g_wasm.context_randomize(ip_ctx, ip_seed)) {
-      throw Error('Failed to randomize context')
-    }
-  }
 
   /**
    * Puts the given private key into program memory, runs the given callback, then zeroes out the key
@@ -158,9 +147,6 @@ export const WasmSecp256k1 = async (
       crypto.getRandomValues(new Uint8Array(ByteLens.PRIVATE_KEY)),
 
     get_public_key(atu8_sk) {
-      // randomize context
-      randomize_context()
-
       // while using the private key, compute its corresponding public key; from the docs:
       if (
         BinaryResult.SUCCESS !==
@@ -181,15 +167,14 @@ export const WasmSecp256k1 = async (
       )
     },
 
-    sign(atu8_sk, atu8_hash, atu8_ent = random_32()) {
-      // randomize context
-      randomize_context()
-
+    sign(atu8_sk, atu8_hash, atu8_ent) {
       // copy message hash bytes into place
       ATU8_HEAP.set(atu8_hash, ip_msg_hash)
 
       // copy entropy bytes into place
-      ATU8_HEAP.set(atu8_ent, ip_ent)
+      if (!atu8_ent && crypto.getRandomValues) {
+        ATU8_HEAP.set(crypto.getRandomValues(new Uint8Array(32)), ip_ent)
+      }
 
       // while using the private key, sign the given message hash
       if (
@@ -243,6 +228,18 @@ export const WasmSecp256k1 = async (
           ip_xonly_pubkey
         )
       )
+    },
+
+    sha256(message) {
+      const ip_message = g_wasm.malloc(message.length)
+      const data = utf8.encode(message)
+
+      ATU8_HEAP.set(data, ip_message)
+      g_wasm.sha256_initialize(ip_sha256)
+      g_wasm.sha256_write(ip_sha256, ip_message, message.length)
+      g_wasm.sha256_finalize(ip_sha256, ip_msg_hash)
+
+      return ATU8_HEAP.slice(ip_msg_hash, ip_msg_hash + ByteLens.MSG_HASH)
     }
   }
 }

@@ -8,6 +8,7 @@ RUN apt-get update \
 
 COPY submodules/libsecp256k1 /app
 COPY scripts/compile.sh /app
+COPY scripts/exported_functions /app
 
 WORKDIR /app
 

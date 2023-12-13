@@ -30,9 +30,7 @@ if (!sr_file) {
   process.exit(1)
 }
 
-const sx_js = readFileSync(sr_file, 'utf-8')
-
-const yn_root = acorn.parse(sx_js, {
+const yn_root = acorn.parse(readFileSync(sr_file, 'utf-8'), {
   ecmaVersion: 'latest'
 })
 
@@ -75,9 +73,6 @@ const H_KNOWN_EXPORT_TYPES: Dict = {
 
 const rename_export = (si_func: string) =>
   si_func.replace(/^_(?:secp256k1_)?/, '').replace('wasmMemory', 'memory')
-
-const export_type = (si_func: string) =>
-  H_KNOWN_EXPORT_TYPES[si_func] || 'Function'
 
 for (const yn_top of yn_root.body) {
   if ('ExpressionStatement' === yn_top.type) {

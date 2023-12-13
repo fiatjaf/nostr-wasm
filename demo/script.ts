@@ -1,10 +1,3 @@
-import {
-  buffer_to_hex,
-  hex_to_buffer,
-  sha256,
-  text_to_buffer
-} from '@blake.regalia/belt'
-
 import {WasmSecp256k1} from '../src/api/secp256k1'
 
 const elem = <d_type extends HTMLElement = HTMLElement>(si_id: string) =>
@@ -42,7 +35,7 @@ const dm_verified = elem<HTMLInputElement>('verified')
       return sk_err('not hexadecimal')
     }
 
-    atu8_sk = hex_to_buffer(sb16_sk)
+    atu8_sk = fromHex(sb16_sk)
 
     try {
       atu8_pk = k_secp.get_public_key(atu8_sk)
@@ -50,15 +43,14 @@ const dm_verified = elem<HTMLInputElement>('verified')
       return sk_err((e_convert as Error).message)
     }
 
-    dm_pk.value = buffer_to_hex(atu8_pk)
+    dm_pk.value = toHex(atu8_pk)
 
     void reload_sig()
   }
 
   async function reload_sig() {
-    atu8_hash = await sha256(text_to_buffer(dm_msg.value))
-
-    dm_hash.value = buffer_to_hex(atu8_hash)
+    atu8_hash = k_secp.sha256(dm_msg.value)
+    dm_hash.value = toHex(atu8_hash)
 
     try {
       atu8_sig = k_secp.sign(atu8_sk, atu8_hash)
@@ -66,7 +58,7 @@ const dm_verified = elem<HTMLInputElement>('verified')
       return (dm_sig.value = (e_convert as Error).message)
     }
 
-    dm_sig.value = buffer_to_hex(atu8_sig)
+    dm_sig.value = toHex(atu8_sig)
 
     let v: Boolean
     try {
@@ -82,7 +74,7 @@ const dm_verified = elem<HTMLInputElement>('verified')
   atu8_sk = k_secp.gen_secret_key()
 
   // set value in UI
-  dm_sk.value = buffer_to_hex(atu8_sk)
+  dm_sk.value = toHex(atu8_sk)
 
   // bind to input events
   dm_sk.addEventListener('input', reload_sk)
@@ -91,3 +83,16 @@ const dm_verified = elem<HTMLInputElement>('verified')
   // init
   reload_sk()
 })()
+
+function toHex(bytes: Uint8Array): string {
+  return bytes.reduce(
+    (hex, byte) => hex + byte.toString(16).padStart(2, '0'),
+    ''
+  )
+}
+
+function fromHex(hex: string): Uint8Array {
+  return new Uint8Array(hex.length / 2).map((_, i) =>
+    parseInt(hex.slice(i * 2, i * 2 + 2), 16)
+  )
+}
