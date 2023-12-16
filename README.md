@@ -8,6 +8,10 @@ Nostr signature stuff in WASM based on libsecp256k1.
 yarn install
 ```
 
+## Demo
+
+A demo application using this package is available at https://nostr-wasm-demo.pages.dev/.
+
 ## Usage
 
 First, choose which import method suites your needs:
