@@ -92,7 +92,7 @@ No, the library is imported as a git submodule directly from upstream.
 
 Prerequisites:
 
-- Docker
+- [Podman](https://podman.io/)
 - [Bun](https://bun.sh/) - a drop-in replacement for Node.js with native support for executing TypeScript
 
 ```sh

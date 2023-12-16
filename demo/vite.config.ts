@@ -1,16 +1,15 @@
 import {defineConfig} from 'vite'
+import {svelte} from '@sveltejs/vite-plugin-svelte'
+import {copy} from 'vite-plugin-copy'
 
-export default defineConfig(({mode: si_mode}) => ({
-  build: {
-    outDir: 'out/',
-    sourcemap: true,
-    minify: false,
-    emptyOutDir: true,
-    rollupOptions: {
-      output: {
-        entryFileNames: 'assets/[name].js'
+export default defineConfig({
+  plugins: [
+    svelte(),
+    copy([
+      {
+        src: '../public/out/secp256k1.wasm',
+        dest: './public/'
       }
-    }
-  },
-  base: './'
-}))
+    ])
+  ]
+})

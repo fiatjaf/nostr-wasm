@@ -1,68 +1,66 @@
 import type {
   PointerKeypair,
   PointerSig,
-  Secp256k1WasmCore,
   PointerXOnlyKey,
-  PointerSha256
-} from './secp256k1-types.js'
+  PointerSha256,
+  Secp256k1WasmCore
+} from './types.js'
 
 import {emsimp} from './emsimp.js'
-import {BinaryResult, ByteLens, Flags} from './secp256k1-types.js'
+import {BinaryResult, ByteLens, Flags} from './types.js'
 import {map_wasm_exports, map_wasm_imports} from '../gen/wasm.js'
 
-const S_TAG_BIP340_VERIFY = 'BIP340 verify: '
+type Event = {
+  id: string
+  pubkey: string
+  sig: string
+  content: string
+  kind: number
+  created_at: number
+  tags: string[][]
+}
 
-const S_REASON_INVALID_SK = 'Invalid private key'
-const S_REASON_INVALID_PK = 'Invalid public key'
-
-/**
- * Wrapper instance providing operations backed by libsecp256k1 WASM module
- */
-export interface Secp256k1 {
+export interface Nostr {
   /**
    * Generates a new private key using crypto secure random bytes and without modulo bias
    * @returns a new private key (32 bytes)
    */
-  gen_secret_key(): Uint8Array
+  generateSecretKey(): Uint8Array
 
   /**
    * Computes the public key for a given private key
-   * @param sk - the private key (32 bytes)
+   * @param seckey - the private key (32 bytes)
    * @returns the public key (32 bytes)
    */
-  get_public_key(sk: Uint8Array): Uint8Array
+  getPublicKey(seckey: Uint8Array): Uint8Array
 
   /**
-   * Signs the given message hash using the given private key.
-   * @param sk - the private key
-   * @param hash - the message hash (32 bytes)
+   * Fills in an event object with pubkey, id and sig.
+   * @param event - the Nostr event object
+   * @param seckey - the private key
    * @param entropy - optional entropy to use
-   * @returns compact signature (64 bytes)`
    */
-  sign(sk: Uint8Array, hash: Uint8Array, ent?: Uint8Array): Uint8Array
+  finalizeEvent(event: Event, seckey: Uint8Array, ent?: Uint8Array): void
 
   /**
-   * Verifies the signature is valid for the given message hash and public key
-   * @param signature - compact signature (64 bytes)
-   * @param msg - the message hash (32 bytes)
-   * @param pk - the public key
+   * Verifies if an event's .id property is correct and that the .sig is valid
+   * @param event - the Nostr event object
+   * @throws an error with a .message if the event is not valid for any reason
    */
-  verify(signature: Uint8Array, hash: Uint8Array, pk: Uint8Array): boolean
-
-  sha256(message: string): Uint8Array
+  verifyEvent(event: Event): void
 }
 
 /**
- * Creates a new instance of the secp256k1 WASM and returns its ES wrapper
+ * Creates a new instance of the secp256k1 WASM and returns the Nostr wrapper
  * @param z_src - a Response containing the WASM binary, a Promise that resolves to one,
  * 	or the raw bytes to the WASM binary as a {@link BufferSource}
  * @returns the wrapper API
  */
-export const WasmSecp256k1 = async (
+export const NostrWasm = async (
   z_src: Promise<Response> | Response | BufferSource
-): Promise<Secp256k1> => {
+): Promise<Nostr> => {
   // prepare the runtime
-  const [g_imports, f_bind_heap] = emsimp(map_wasm_imports, 'wasm-secp256k1')
+  const [g_imports, f_bind_heap] = emsimp(map_wasm_imports, 'nostr-wasm')
 
   // prep the wasm module
   let d_wasm: WebAssembly.WebAssemblyInstantiatedSource
@@ -78,7 +76,7 @@ export const WasmSecp256k1 = async (
     d_wasm = await WebAssembly.instantiate(z_src as BufferSource, g_imports)
   }
 
-  // create the libsecp256k1 exports struct
+  // create the exports struct
   const g_wasm = map_wasm_exports<Secp256k1WasmCore>(d_wasm.instance.exports)
 
   // bind the heap and ref its view(s)
@@ -142,19 +140,33 @@ export const WasmSecp256k1 = async (
     return w_return
   }
 
+  const compute_event_id = (event: Event): Uint8Array => {
+    const message = utf8.encode(
+      `[0,"${event.pubkey}",${event.created_at},${event.kind},${JSON.stringify(
+        event.tags
+      )},${JSON.stringify(event.content)}]`
+    )
+    const ip_message = g_wasm.malloc(message.length)
+    ATU8_HEAP.set(message, ip_message)
+    g_wasm.sha256_initialize(ip_sha256)
+    g_wasm.sha256_write(ip_sha256, ip_message, message.length)
+    g_wasm.sha256_finalize(ip_sha256, ip_msg_hash)
+
+    return ATU8_HEAP.slice(ip_msg_hash, ip_msg_hash + ByteLens.MSG_HASH)
+  }
+
   return {
-    gen_secret_key: () =>
+    generateSecretKey: () =>
       crypto.getRandomValues(new Uint8Array(ByteLens.PRIVATE_KEY)),
 
-    get_public_key(atu8_sk) {
-      // while using the private key, compute its corresponding public key; from the docs:
+    getPublicKey(sk) {
       if (
         BinaryResult.SUCCESS !==
-        with_keypair(atu8_sk, () =>
+        with_keypair(sk, () =>
           g_wasm.keypair_xonly_pub(ip_ctx, ip_xonly_pubkey, null, ip_keypair)
         )
       ) {
-        throw Error('sk_to_pk: ' + S_REASON_INVALID_SK)
+        throw Error('failed to get pubkey from keypair')
       }
 
       // serialize the public key
@@ -167,19 +179,32 @@ export const WasmSecp256k1 = async (
       )
     },
 
-    sign(atu8_sk, atu8_hash, atu8_ent) {
-      // copy message hash bytes into place
-      ATU8_HEAP.set(atu8_hash, ip_msg_hash)
+    finalizeEvent(event, seckey, ent) {
+      with_keypair(seckey, () => {
+        // get public key (as in getPublicKey function above)
+        g_wasm.keypair_xonly_pub(ip_ctx, ip_xonly_pubkey, null, ip_keypair)
+        g_wasm.xonly_pubkey_serialize(
+          ip_ctx,
+          ip_pubkey_scratch,
+          ip_xonly_pubkey
+        )
+        const pubkey = ATU8_HEAP.slice(
+          ip_pubkey_scratch,
+          ip_pubkey_scratch + ByteLens.XONLY_PUBKEY
+        )
+        event.pubkey = toHex(pubkey)
 
-      // copy entropy bytes into place
-      if (!atu8_ent && crypto.getRandomValues) {
-        ATU8_HEAP.set(crypto.getRandomValues(new Uint8Array(32)), ip_ent)
-      }
+        // compute event id
+        event.id = toHex(compute_event_id(event))
 
-      // while using the private key, sign the given message hash
-      if (
-        BinaryResult.SUCCESS !==
-        with_keypair(atu8_sk, () =>
+        // copy entropy bytes into place, if they are provided
+        if (!ent && crypto.getRandomValues) {
+          ATU8_HEAP.set(crypto.getRandomValues(new Uint8Array(32)), ip_ent)
+        }
+
+        // perform signature (ip_msg_hash is already set from procedure above)
+        if (
+          BinaryResult.SUCCESS !==
           g_wasm.schnorrsig_sign32(
             ip_ctx,
             ip_sig_scratch,
@@ -187,39 +212,42 @@ export const WasmSecp256k1 = async (
             ip_keypair,
             ip_ent
           )
-        )
-      ) {
-        throw Error('BIP-340 sign: ' + S_REASON_INVALID_SK)
-      }
-
-      // return serialized signature
-      return ATU8_HEAP.slice(
+        ) {
+          throw Error('failed to sign')
+        }
+      })
+      const sig = ATU8_HEAP.slice(
         ip_sig_scratch,
         ip_sig_scratch + ByteLens.BIP340_SIG
       )
+      event.sig = toHex(sig)
     },
 
-    verify(atu8_signature, atu8_hash, atu8_pk) {
-      // copy signature bytes into place
-      ATU8_HEAP.set(atu8_signature, ip_sig_scratch)
+    verifyEvent(event: Event) {
+      const id = fromHex(event.id)
 
-      // copy message hash bytes into place
-      ATU8_HEAP.set(atu8_hash, ip_msg_hash)
+      // check event hash
+      const computed = compute_event_id(event)
+      if (id.every((c, i) => c === computed[i])) {
+        throw Error('id is invalid')
+      }
 
-      // copy pubkey bytes into place
-      ATU8_HEAP.set(atu8_pk, ip_pubkey_scratch)
+      // copy event data into place
+      ATU8_HEAP.set(fromHex(event.sig), ip_sig_scratch)
+      ATU8_HEAP.set(fromHex(event.id), ip_msg_hash)
+      ATU8_HEAP.set(fromHex(event.pubkey), ip_pubkey_scratch)
 
       // parse the public key
       if (
         BinaryResult.SUCCESS !==
         g_wasm.xonly_pubkey_parse(ip_ctx, ip_xonly_pubkey, ip_pubkey_scratch)
       ) {
-        throw Error(S_TAG_BIP340_VERIFY + S_REASON_INVALID_PK)
+        throw Error('pubkey is invalid')
       }
 
       // verify the signature
-      return (
-        BinaryResult.SUCCESS ===
+      if (
+        BinaryResult.SUCCESS !==
         g_wasm.schnorrsig_verify(
           ip_ctx,
           ip_sig_scratch,
@@ -227,19 +255,22 @@ export const WasmSecp256k1 = async (
           ByteLens.MSG_HASH,
           ip_xonly_pubkey
         )
-      )
-    },
-
-    sha256(message) {
-      const ip_message = g_wasm.malloc(message.length)
-      const data = utf8.encode(message)
-
-      ATU8_HEAP.set(data, ip_message)
-      g_wasm.sha256_initialize(ip_sha256)
-      g_wasm.sha256_write(ip_sha256, ip_message, message.length)
-      g_wasm.sha256_finalize(ip_sha256, ip_msg_hash)
-
-      return ATU8_HEAP.slice(ip_msg_hash, ip_msg_hash + ByteLens.MSG_HASH)
+      ) {
+        throw Error('signature is invalid')
+      }
     }
   }
+}
+
+function toHex(bytes: Uint8Array): string {
+  return bytes.reduce(
+    (hex, byte) => hex + byte.toString(16).padStart(2, '0'),
+    ''
+  )
+}
+
+function fromHex(hex: string): Uint8Array {
+  return new Uint8Array(hex.length / 2).map((_, i) =>
+    parseInt(hex.slice(i * 2, i * 2 + 2), 16)
+  )
 }

@@ -1,10 +1,10 @@
 export * from './headless.js'
 
-import {WasmSecp256k1, type Secp256k1} from './api/secp256k1.js'
+import {NostrWasm, type Nostr} from './api/nostr.js'
 
 import SB64_SECP256K1_WASM from '../public/out/secp256k1.wasm?gzip'
 
-export const initWasmSecp256k1 = async (): Promise<Secp256k1> => {
+export const initWasmSecp256k1 = async (): Promise<Nostr> => {
   // get bytes blob from base64
   const atu8_gzipped = new Uint8Array(
     atob(SB64_SECP256K1_WASM)
@@ -35,7 +35,7 @@ export const initWasmSecp256k1 = async (): Promise<Secp256k1> => {
 
   const atu8_gunzipped = concat(a_chunks)
 
-  return await WasmSecp256k1(atu8_gunzipped)
+  return await NostrWasm(atu8_gunzipped)
 }
 
 function concat(a_buffers: Uint8Array[]) {
