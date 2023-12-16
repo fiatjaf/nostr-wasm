@@ -228,8 +228,8 @@ export const NostrWasm = async (
 
       // check event hash
       const computed = compute_event_id(event)
-      if (id.every((c, i) => c === computed[i])) {
-        throw Error('id is invalid')
+      for (let i = 0; i < id.length; i++) {
+        if (id[i] !== computed[i]) throw Error('id is invalid')
       }
 
       // copy event data into place

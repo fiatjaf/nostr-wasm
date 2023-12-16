@@ -25,8 +25,8 @@
     pubkey: '',
     sig: ''
   }
-  let signatureIsValid = false
-  let idIsValid = false
+  let signatureIsValid: boolean | null = null
+  let idIsValid: boolean | null = null
   let loglines: string[][] = []
 
   let nw: Nostr
@@ -58,6 +58,9 @@
   function reset() {
     event.id = ''
     event.sig = ''
+    event = event
+    idIsValid = null
+    signatureIsValid = null
   }
 
   function verify() {
@@ -89,12 +92,12 @@
   <div style="margin-bottom: 10px">
     <label>
       id: <input readonly value={event.id} />
-      {idIsValid ? 'valid' : 'invalid'}
+      {idIsValid === null ? '?' : idIsValid ? 'valid' : 'invalid'}
     </label>
   </div>
   <div style="margin-bottom: 10px">
     <label>
-      pubkey: <input bind:value={event.pubkey} on:change={reset} />
+      pubkey: <input bind:value={event.pubkey} on:input={reset} />
     </label>
   </div>
   <div style="margin-bottom: 10px">
@@ -102,7 +105,7 @@
       created_at: <input
         type="datetime"
         bind:value={event.created_at}
-        on:change={reset}
+        on:input={reset}
       />
     </label>
   </div>
@@ -114,23 +117,24 @@
         max="65535"
         step="1"
         bind:value={event.kind}
-        on:change={reset}
+        on:input={reset}
       />
     </label>
   </div>
   <div style="margin-bottom: 10px">
     <label>
-      content: <textarea bind:value={event.content} on:change={reset} />
+      content: <textarea bind:value={event.content} on:input={reset} />
     </label>
   </div>
   <div style="margin-bottom: 10px">tags:</div>
   <div style="margin-bottom: 10px">
     <label>
       sig: <input readonly value={event.sig} />
-      {signatureIsValid ? 'valid' : 'invalid'}
+      {idIsValid === null ? '?' : idIsValid ? 'valid' : 'invalid'}
     </label>
-    <button disabled={event.id === '' && event.sig === ''} on:click={verify}
-      >verify</button
+    <button
+      disabled={(event.id === '' && event.sig === '') || idIsValid !== null}
+      on:click={verify}>verify</button
     >
   </div>
 
