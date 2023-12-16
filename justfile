@@ -7,3 +7,7 @@ build:
 
 demo: build
   cd demo && ./node_modules/.bin/vite build --watch --mode=development --minify=false --sourcemap=inline --debug
+
+init:
+  bun install
+  cd demo && bun install

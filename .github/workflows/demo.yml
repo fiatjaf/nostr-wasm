@@ -24,6 +24,7 @@ jobs:
           sudo apt autoremove -y
       - name: install just
         uses: extractions/setup-just@v1
+      - run: just init
       - run: just demo
       - name: publish to cloudflare pages
         uses: cloudflare/pages-action@v1
