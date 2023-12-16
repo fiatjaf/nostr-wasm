@@ -21,13 +21,14 @@
     kind: 1,
     created_at: Math.floor(Date.now() / 1000),
     content: 'hello world',
-    tags: [],
+    tags: [] as string[][],
     pubkey: '',
     sig: ''
   }
   let signatureIsValid: boolean | null = null
   let idIsValid: boolean | null = null
   let loglines: string[][] = []
+  let canAddNewItem = true
 
   let nw: Nostr
   onMount(async () => {
@@ -78,6 +79,21 @@
       }
     }
   }
+
+  function newTag(ev: Event & {currentTarget: EventTarget & HTMLInputElement}) {
+    canAddNewItem = false
+    event.tags.push([ev.currentTarget.value])
+    event = event
+  }
+
+  function newItem(
+    tag: string[],
+    ev: Event & {currentTarget: EventTarget & HTMLInputElement}
+  ) {
+    canAddNewItem = false
+    tag.push(ev.currentTarget.value)
+    event = event
+  }
 </script>
 
 <main>
@@ -89,53 +105,88 @@
     <button disabled={!nw} on:click={generate}>generate</button>
   </div>
   <hr />
-  <div style="margin-bottom: 10px">
-    <label>
-      id: <input readonly value={event.id} />
-      {idIsValid === null ? '?' : idIsValid ? 'valid' : 'invalid'}
-    </label>
-  </div>
-  <div style="margin-bottom: 10px">
-    <label>
-      pubkey: <input bind:value={event.pubkey} on:input={reset} />
-    </label>
-  </div>
-  <div style="margin-bottom: 10px">
-    <label>
-      created_at: <input
-        type="datetime"
-        bind:value={event.created_at}
-        on:input={reset}
-      />
-    </label>
-  </div>
-  <div style="margin-bottom: 10px">
-    <label>
-      kind: <input
-        type="number"
-        min="0"
-        max="65535"
-        step="1"
-        bind:value={event.kind}
-        on:input={reset}
-      />
-    </label>
-  </div>
-  <div style="margin-bottom: 10px">
-    <label>
-      content: <textarea bind:value={event.content} on:input={reset} />
-    </label>
-  </div>
-  <div style="margin-bottom: 10px">tags:</div>
-  <div style="margin-bottom: 10px">
-    <label>
-      sig: <input readonly value={event.sig} />
-      {idIsValid === null ? '?' : idIsValid ? 'valid' : 'invalid'}
-    </label>
-    <button
-      disabled={(event.id === '' && event.sig === '') || idIsValid !== null}
-      on:click={verify}>verify</button
+  <div style="display: flex">
+    <div>
+      <div style="margin-bottom: 10px">
+        <label>
+          id: <input readonly value={event.id} />
+          {idIsValid === null ? '?' : idIsValid ? 'valid' : 'invalid'}
+        </label>
+      </div>
+      <div style="margin-bottom: 10px">
+        <label>
+          pubkey: <input bind:value={event.pubkey} on:input={reset} />
+        </label>
+      </div>
+      <div style="margin-bottom: 10px">
+        <label>
+          created_at: <input
+            type="datetime"
+            bind:value={event.created_at}
+            on:input={reset}
+          />
+        </label>
+      </div>
+      <div style="margin-bottom: 10px">
+        <label>
+          kind: <input
+            type="number"
+            min="0"
+            max="65535"
+            step="1"
+            bind:value={event.kind}
+            on:input={reset}
+          />
+        </label>
+      </div>
+      <div style="margin-bottom: 10px">
+        <label>
+          content: <textarea bind:value={event.content} on:input={reset} />
+        </label>
+      </div>
+      <div style="margin-bottom: 10px;">
+        tags:
+        <ul>
+          {#each event.tags as tag}
+            <li>
+              {#each tag as item}
+                <!-- svelte-ignore a11y-autofocus -->
+                <input
+                  bind:value={item}
+                  autofocus
+                  on:blur={() => {
+                    canAddNewItem = true
+                  }}
+                />
+              {/each}
+              {#if canAddNewItem}
+                <input on:input={newItem.bind(null, tag)} style="width: 20px" />
+              {/if}
+            </li>
+          {/each}
+          {#if canAddNewItem}
+            <li>
+              <input on:input={newTag} style="width: 20px" />
+            </li>
+          {/if}
+        </ul>
+      </div>
+      <div style="margin-bottom: 10px">
+        <label>
+          sig: <input readonly value={event.sig} />
+          {idIsValid === null ? '?' : idIsValid ? 'valid' : 'invalid'}
+        </label>
+        {#if (event.id === '' && event.sig === '') || idIsValid !== null}
+          <button on:click={verify}>verify</button>
+        {/if}
+      </div>
+    </div>
+
+    <div
+      style="font-family: monospace; white-space: pre-wrap; word-break: break-all;"
     >
+      {JSON.stringify(event, null, 2)}
+    </div>
   </div>
 
   <hr />
