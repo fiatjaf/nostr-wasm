@@ -30,6 +30,6 @@ jobs:
         uses: cloudflare/pages-action@v1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: 60325047cc7d0811c6b337717918cbc1
+          accountId: 444a281da7983eac7a37b9896aad917c
           projectName: nostr-wasm-demo
           directory: demo/dist
