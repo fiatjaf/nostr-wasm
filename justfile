@@ -6,6 +6,9 @@ build:
   rollup -c rollup.config.js --configPlugin typescript
 
 demo: build
+  cd demo && ./node_modules/.bin/vite build --sourcemap=inline --debug
+
+demo-watch: build
   cd demo && ./node_modules/.bin/vite build --watch --mode=development --minify=false --sourcemap=inline --debug
 
 init:
