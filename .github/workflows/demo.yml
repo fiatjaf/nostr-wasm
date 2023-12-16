@@ -1,0 +1,34 @@
+name: demo page
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: install bun
+        uses: oven-sh/setup-bun@v1
+      - name: install podman
+        run: |
+          set -x
+          sudo apt-get remove -y podman docker-ce docker docker-engine docker.io containerd runc ||:
+          echo  "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_$( lsb_release -rs )/ /" | sudo tee /etc/apt/sources.list.d/podman.list /dev/null
+          sudo apt-get update --allow-unauthenticated --allow-insecure-repositories
+          sudo apt-get install -y podman
+          sudo apt autoremove -y
+      - name: install just
+        uses: extractions/setup-just@v1
+      - run: just demo
+      - name: publish to cloudflare pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: 60325047cc7d0811c6b337717918cbc1
+          projectName: nostr-wasm-demo
+          directory: demo/dist
