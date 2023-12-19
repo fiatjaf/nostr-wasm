@@ -4,7 +4,7 @@ import {NostrWasm, type Nostr} from './api/nostr.js'
 
 import SB64_SECP256K1_WASM from '../public/out/secp256k1.wasm?gzip'
 
-export const initWasmSecp256k1 = async (): Promise<Nostr> => {
+export const initNostrWasm = async (): Promise<Nostr> => {
   // get bytes blob from base64
   const atu8_gzipped = new Uint8Array(
     atob(SB64_SECP256K1_WASM)
