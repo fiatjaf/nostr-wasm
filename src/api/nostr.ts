@@ -151,6 +151,7 @@ export const NostrWasm = async (
     g_wasm.sha256_initialize(ip_sha256)
     g_wasm.sha256_write(ip_sha256, ip_message, message.length)
     g_wasm.sha256_finalize(ip_sha256, ip_msg_hash)
+    g_wasm.free(ip_message)
 
     return ATU8_HEAP.slice(ip_msg_hash, ip_msg_hash + ByteLens.MSG_HASH)
   }
