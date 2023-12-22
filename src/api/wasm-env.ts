@@ -1,7 +1,7 @@
-import type {ImportMapper} from 'src/types'
+import type {WasmImports} from 'src/types'
 
-export const emsimp = (f_map_imports: ImportMapper, s_tag: string) => {
-  s_tag += ': '
+export function defineWasmEnv(label: string) {
+  label += ': '
 
   let AB_HEAP: ArrayBuffer
   let ATU8_HEAP: Uint8Array
@@ -14,7 +14,7 @@ export const emsimp = (f_map_imports: ImportMapper, s_tag: string) => {
       'debug' | 'info' | 'log' | 'warn' | 'error'
     >,
     s_out: string
-  ) => console[s_channel](s_tag + s_out.replace(/\0/g, '\n'))
+  ) => console[s_channel](label + s_out.replace(/\0/g, '\n'))
 
   let s_error = ''
 
@@ -33,16 +33,16 @@ export const emsimp = (f_map_imports: ImportMapper, s_tag: string) => {
     }
   }
 
-  const g_imports = f_map_imports({
+  const imports: WasmImports = {
     abort() {
-      throw Error(s_tag + (s_error || 'An unknown error occurred'))
+      throw Error(label + (s_error || 'An unknown error occurred'))
     },
 
     memcpy: (ip_dst, ip_src, nb_size) =>
       ATU8_HEAP.copyWithin(ip_dst, ip_src, ip_src + nb_size),
 
-    resize(_) {
-      throw Error(s_tag + 'Out of memory')
+    resize(w) {
+      throw Error(label + `Out of memory (resizing ${w})`)
     },
 
     write(i_fd, ip_iov, nl_iovs, ip_written) {
@@ -86,10 +86,10 @@ export const emsimp = (f_map_imports: ImportMapper, s_tag: string) => {
       // no error
       return 0
     }
-  })
+  }
 
   return [
-    g_imports,
+    imports,
     (d_memory: WebAssembly.Memory) =>
       [
         (AB_HEAP = d_memory.buffer),

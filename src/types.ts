@@ -33,5 +33,3 @@ export interface WasmExports {
   memory: WebAssembly.Memory
   init: VoidFunction
 }
-
-export type ImportMapper = (g_imports: WasmImports) => WebAssembly.Imports

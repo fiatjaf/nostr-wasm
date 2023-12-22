@@ -6,7 +6,7 @@ import type {
   Secp256k1WasmCore
 } from './types.js'
 
-import {emsimp} from './emsimp.js'
+import {defineWasmEnv} from './wasm-env.js'
 import {BinaryResult, ByteLens, Flags} from './types.js'
 import {map_wasm_exports, map_wasm_imports} from '../gen/wasm.js'
 
@@ -60,7 +60,8 @@ export const NostrWasm = async (
   z_src: Promise<Response> | Response | BufferSource
 ): Promise<Nostr> => {
   // prepare the runtime
-  const [g_imports, f_bind_heap] = emsimp(map_wasm_imports, 'nostr-wasm')
+  const [defs, f_bind_heap] = defineWasmEnv('nostr-wasm')
+  const g_imports = map_wasm_imports(defs)
 
   // prep the wasm module
   let d_wasm: WebAssembly.WebAssemblyInstantiatedSource
