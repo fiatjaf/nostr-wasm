@@ -14,3 +14,6 @@ demo-watch: build
 init:
   bun install
   cd demo && bun install
+
+publish: build
+  npm publish
